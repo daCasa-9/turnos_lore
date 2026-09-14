@@ -309,6 +309,10 @@
 
       <div class="bg-panelbg/60 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
         <div class="flex justify-between text-slate-300">
+          <span>Calendario de destino:</span>
+          <span class="font-bold text-blue-400">Turnos Lore</span>
+        </div>
+        <div class="flex justify-between text-slate-300">
           <span>Mes a sincronizar:</span>
           <span id="gcalModalMonthName" class="font-bold text-white">Octubre 2026</span>
         </div>
@@ -835,7 +839,7 @@
         const nextD = String(dateObj.getDate()).padStart(2, '0');
         const cleanNextDate = `${nextY}${nextM}${nextD}`;
 
-        const summary = (type === 'D') ? "Turno de Día 🟡" : "Turno de Noche 🟣";
+        const summary = (type === 'D') ? "Lore día" : "Lore noche";
         const category = (type === 'D') ? "TURNO DIA" : "TURNO NOCHE";
 
         icsContent.push(
@@ -845,7 +849,7 @@
           `DTSTART;VALUE=DATE:${cleanDate}`,
           `DTEND;VALUE=DATE:${cleanNextDate}`,
           `SUMMARY:${summary}`,
-          `DESCRIPTION:Turno de trabajo en Gestor Lore (${type === 'D' ? 'Día' : 'Noche'})`,
+          `DESCRIPTION:Turno de trabajo Lore (${type === 'D' ? 'Día' : 'Noche'})`,
           `CATEGORIES:${category}`,
           "TRANSP:TRANSPARENT",
           "END:VEVENT"
@@ -900,7 +904,7 @@
       try {
         googleTokenClient = google.accounts.oauth2.initTokenClient({
           client_id: HARDCODED_GOOGLE_CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/calendar.events',
+          scope: 'https://www.googleapis.com/auth/calendar',
           callback: async (tokenResponse) => {
             if (tokenResponse.error) {
               showToast("Error de autenticación con Google: " + tokenResponse.error, "warning");
@@ -917,6 +921,39 @@
         showToast("Error en cliente Google OAuth: " + err.message, "warning");
         return false;
       }
+    }
+
+    // Helper to get existing 'Turnos Lore' calendar or create a new one
+    async function getOrCreateTargetCalendar(accessToken) {
+      // 1. Fetch calendar list to check if 'Turnos Lore' already exists
+      const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (!listRes.ok) throw new Error("No se pudo obtener la lista de calendarios de tu cuenta");
+      
+      const listData = await listRes.json();
+      const existingCal = listData.items?.find(c => c.summary && c.summary.trim().toLowerCase() === "turnos lore");
+      
+      if (existingCal) {
+        return existingCal.id;
+      }
+
+      // 2. Create a new secondary calendar 'Turnos Lore' if not found
+      const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          summary: "Turnos Lore",
+          description: "Calendario de turnos de trabajo Lore"
+        })
+      });
+      if (!createRes.ok) throw new Error("No se pudo crear el calendario 'Turnos Lore'");
+      
+      const newCal = await createRes.json();
+      return newCal.id;
     }
 
     function startGoogleSyncFlow() {
@@ -987,61 +1024,72 @@
 
       openSyncProgressModal(entries.length);
 
-      let successCount = 0;
-      let failCount = 0;
+      try {
+        // Resolve target calendar ID ('Turnos Lore')
+        document.getElementById('syncModalStatus').textContent = "Buscando/Creando calendario 'Turnos Lore'...";
+        const targetCalendarId = await getOrCreateTargetCalendar(googleAccessToken);
 
-      for (let i = 0; i < entries.length; i++) {
-        const [dateStr, type] = entries[i];
-        
-        // Calculate next day string for All-Day event DTEND
-        const dateObj = new Date(dateStr + 'T00:00:00');
-        dateObj.setDate(dateObj.getDate() + 1);
-        const nextYear = dateObj.getFullYear();
-        const nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const nextDay = String(dateObj.getDate()).padStart(2, '0');
-        const endDateStr = `${nextYear}-${nextMonth}-${nextDay}`;
+        let successCount = 0;
+        let failCount = 0;
 
-        const summary = (type === 'D') ? "Turno de Día 🟡" : "Turno de Noche 🟣";
-        const description = `Turno de trabajo asignado en Gestor Lore (${type === 'D' ? 'Día' : 'Noche'})`;
-        
-        // Google Calendar Color IDs: '5' = Banana (Yellow), '3' = Grape (Purple)
-        const colorId = (type === 'D') ? '5' : '3';
+        for (let i = 0; i < entries.length; i++) {
+          const [dateStr, type] = entries[i];
+          
+          // Calculate next day string for All-Day event DTEND
+          const dateObj = new Date(dateStr + 'T00:00:00');
+          dateObj.setDate(dateObj.getDate() + 1);
+          const nextYear = dateObj.getFullYear();
+          const nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const nextDay = String(dateObj.getDate()).padStart(2, '0');
+          const endDateStr = `${nextYear}-${nextMonth}-${nextDay}`;
 
-        const eventBody = {
-          summary: summary,
-          description: description,
-          start: { date: dateStr },
-          end: { date: endDateStr },
-          colorId: colorId,
-          transparency: "transparent"
-        };
+          const summary = (type === 'D') ? "Lore día" : "Lore noche";
+          const description = `Turno de trabajo asignado (${type === 'D' ? 'Día' : 'Noche'})`;
+          
+          // Google Calendar Color IDs: '5' = Banana (Yellow), '3' = Grape (Purple)
+          const colorId = (type === 'D') ? '5' : '3';
 
-        updateSyncProgress(i + 1, entries.length, summary);
+          const eventBody = {
+            summary: summary,
+            description: description,
+            start: { date: dateStr },
+            end: { date: endDateStr },
+            colorId: colorId,
+            transparency: "transparent"
+          };
 
-        try {
-          const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${googleAccessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(eventBody)
-          });
+          updateSyncProgress(i + 1, entries.length, summary);
 
-          if (response.ok) {
-            successCount++;
-          } else {
-            const errorData = await response.json();
-            console.error("GCal API error:", errorData);
+          try {
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${googleAccessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(eventBody)
+            });
+
+            if (response.ok) {
+              successCount++;
+            } else {
+              const errorData = await response.json();
+              console.error("GCal API error:", errorData);
+              failCount++;
+            }
+          } catch (err) {
+            console.error("Network error during sync:", err);
             failCount++;
           }
-        } catch (err) {
-          console.error("Network error during sync:", err);
-          failCount++;
         }
-      }
 
-      finishSyncProgress(successCount, failCount);
+        finishSyncProgress(successCount, failCount);
+
+      } catch (err) {
+        console.error("Error con el calendario Turnos Lore:", err);
+        showToast("Error al obtener/crear el calendario 'Turnos Lore': " + err.message, "warning");
+        closeSyncProgressModal();
+      }
     }
 
     // --- TOAST UTILITY ---
