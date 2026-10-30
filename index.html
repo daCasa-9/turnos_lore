@@ -3,7 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestor de Turnos Lore - Modo Guía y Calendario</title>
+  <title>Gestor de Turnos Lore - PWA & Google Calendar</title>
+
+  <!-- PWA Primary Meta Tags -->
+  <meta name="theme-color" content="#0b0f17">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Turnos Lore">
+  <meta name="description" content="Gestor y Calendario de Turnos de Trabajo para Lore con Sincronización Google Calendar">
+  
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%238b5cf6'/><text x='50' y='70' font-size='60' font-weight='bold' text-anchor='middle' fill='white'>L</text></svg>">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -78,14 +89,21 @@
         <div>
           <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-2">
             Gestor de Turnos Lore 
-            <span class="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">OAuth Direct Sync</span>
+            <span class="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">PWA App</span>
           </h1>
-          <p class="text-xs text-slate-400">Modo Guía Visual + Calendario Interactivo con Sincronización Directa a Google Calendar</p>
+          <p class="text-xs text-slate-400">Guía Visual + Calendario Interactivo con Sincronización Directa a Google Calendar</p>
         </div>
       </div>
 
-      <!-- Quick Action Badges -->
-      <div class="flex items-center gap-2 text-xs">
+      <!-- Quick Action Badges & PWA Install Button -->
+      <div class="flex items-center gap-2 text-xs flex-wrap">
+        <button id="btnInstallPWA" class="hidden bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10">
+          <svg class="w-4 h-4 text-emerald-400 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          <span>📲 Instalar App</span>
+        </button>
+
         <div class="bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5">
           <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
           <span>Día: 🟡</span>
@@ -410,7 +428,7 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm"></div>
 
-  <!-- JavaScript App Logic -->
+  <!-- JavaScript App Logic & PWA Engine -->
   <script>
     // =========================================================================
     // 🔑 CLIENT ID DE GOOGLE OAUTH CONFIGURADO DIRECTAMENTE
@@ -436,6 +454,9 @@
     let startX = 0, startY = 0;
     let isFullscreen = false;
 
+    // PWA Deferred Install Prompt Event
+    let deferredPrompt = null;
+
     const monthNames = [
       "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
       "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
@@ -443,6 +464,7 @@
 
     // DOM Ready Initialization
     document.addEventListener('DOMContentLoaded', () => {
+      initPWAEngine();
       renderCalendar();
       setupToolButtons();
       setupImageEvents();
@@ -465,6 +487,124 @@
       document.getElementById('btnConfirmGCalSync').addEventListener('click', startGoogleSyncFlow);
       document.getElementById('btnCloseSyncModal').addEventListener('click', closeSyncProgressModal);
     });
+
+    // =========================================================================
+    // 📱 PWA ENGINE INITIALIZATION (MANIFEST & SERVICE WORKER)
+    // =========================================================================
+    function initPWAEngine() {
+      // 1. Generate & Inject Dynamic Web App Manifest
+      const manifestData = {
+        name: "Gestor de Turnos Lore",
+        short_name: "Turnos Lore",
+        description: "Gestor y Calendario de Turnos de Trabajo para Lore con Sincronización Google Calendar",
+        start_url: "./",
+        display: "standalone",
+        background_color: "#0b0f17",
+        theme_color: "#0b0f17",
+        icons: [
+          {
+            src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%238b5cf6'/><text x='50' y='68' font-size='55' font-weight='900' text-anchor='middle' fill='white'>L</text></svg>",
+            sizes: "192x192 512x512",
+            type: "image/svg+xml",
+            purpose: "any maskable"
+          }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(manifestBlob);
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = manifestURL;
+      document.head.appendChild(manifestLink);
+
+      // 2. Register Service Worker for Offline Availability
+      const swCode = `
+        const CACHE_NAME = 'turnos-lore-cache-v1';
+        const ASSETS = [
+          './',
+          'https://cdn.tailwindcss.com',
+          'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap',
+          'https://accounts.google.com/gsi/client'
+        ];
+
+        self.addEventListener('install', (e) => {
+          e.waitUntil(
+            caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
+          );
+          self.skipWaiting();
+        });
+
+        self.addEventListener('activate', (e) => {
+          e.waitUntil(
+            caches.keys().then((keys) => {
+              return Promise.all(keys.map((k) => {
+                if (k !== CACHE_NAME) return caches.delete(k);
+              }));
+            })
+          );
+          self.clients.claim();
+        });
+
+        self.addEventListener('fetch', (e) => {
+          if (e.request.method !== 'GET') return;
+          e.respondWith(
+            caches.match(e.request).then((cached) => {
+              const networked = fetch(e.request).then((response) => {
+                if (response && response.status === 200) {
+                  const cacheCopy = response.clone();
+                  caches.open(CACHE_NAME).then((cache) => cache.put(e.request, cacheCopy));
+                }
+                return response;
+              }).catch(() => cached);
+              return cached || networked;
+            })
+          );
+        });
+      `;
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // Attempt loading sw.js if deployed, fallback to Blob inline SW
+          navigator.serviceWorker.register('./sw.js').catch(() => {
+            const swBlob = new Blob([swCode], { type: 'text/javascript' });
+            const swURL = URL.createObjectURL(swBlob);
+            navigator.serviceWorker.register(swURL).then(() => {
+              console.log('PWA Service Worker registrado con éxito.');
+            }).catch(err => {
+              console.log('PWA Service Worker aviso:', err);
+            });
+          });
+        });
+      }
+
+      // 3. Listen for Native PWA Install Prompt
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const btnInstall = document.getElementById('btnInstallPWA');
+        if (btnInstall) {
+          btnInstall.classList.remove('hidden');
+          btnInstall.addEventListener('click', async () => {
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              const { outcome } = await deferredPrompt.userChoice;
+              if (outcome === 'accepted') {
+                showToast("¡Aplicación instalada con éxito!", "success");
+              }
+              deferredPrompt = null;
+              btnInstall.classList.add('hidden');
+            }
+          });
+        }
+      });
+
+      window.addEventListener('appinstalled', () => {
+        showToast("¡Gestor de Turnos Lore instalado como App en tu teléfono!", "success");
+        const btnInstall = document.getElementById('btnInstallPWA');
+        if (btnInstall) btnInstall.classList.add('hidden');
+      });
+    }
 
     // --- CALENDAR RENDERING LOGIC ---
     function renderCalendar() {
