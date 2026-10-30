@@ -266,10 +266,18 @@
         <!-- Export Buttons Toolbar -->
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="text-[11px] text-slate-400">
-            💡 Haz clic en los días para asignar turnos.
+            💡 Haz clic en los días para asignar turnos o carga tus turnos guardados de Google.
           </div>
 
           <div class="flex items-center gap-2 flex-wrap">
+            <!-- Google Calendar Load Button -->
+            <button id="btnLoadFromGoogle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer" title="Cargar turnos guardados desde Google Calendar">
+              <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span>Cargar de Google</span>
+            </button>
+
             <!-- Google Calendar Direct API Button -->
             <button id="btnSyncGoogleCalendar" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center gap-2 cursor-pointer">
               <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
@@ -460,7 +468,8 @@
       document.getElementById('btnCancelModal').addEventListener('click', closeExportModal);
       document.getElementById('btnConfirmExport').addEventListener('click', confirmAndGenerateICS);
 
-      // Google Calendar Direct Sync Flow Handlers
+      // Google Calendar Direct Sync & Import Flow Handlers
+      document.getElementById('btnLoadFromGoogle').addEventListener('click', loadFromGoogleCalendarFlow);
       document.getElementById('btnSyncGoogleCalendar').addEventListener('click', openGCalConfirmModal);
       document.getElementById('btnCancelGCalModal').addEventListener('click', closeGCalConfirmModal);
       document.getElementById('btnConfirmGCalSync').addEventListener('click', startGoogleSyncFlow);
@@ -624,164 +633,164 @@
       const dropzone = document.getElementById('uploadDropzone');
       const inputUpload = document.getElementById('inputImageUpload');
       const inputChange = document.getElementById('inputChangePhoto');
-
-      dropzone.addEventListener('click', () => inputUpload.click());
-      inputUpload.addEventListener('change', (e) => loadUploadedImage(e.target.files[0]));
-      inputChange.addEventListener('change', (e) => loadUploadedImage(e.target.files[0]));
-
-      dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropzone.classList.add('border-purple-500', 'bg-purple-500/10');
-      });
-      dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('border-purple-500', 'bg-purple-500/10');
-      });
-      dropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('border-purple-500', 'bg-purple-500/10');
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-          loadUploadedImage(e.dataTransfer.files[0]);
-        }
+    // --- GOOGLE CALENDAR DIRECT API SYNC & IMPORT LOGIC ---
+    function openGCalConfirmModal() {
+      const entries = Object.entries(shiftData).filter(([dateStr]) => {
+        const [y, m] = dateStr.split('-').map(Number);
+        return y === currentYear && m === (currentMonth + 1);
       });
 
-      document.getElementById('btnZoomIn').addEventListener('click', () => updateZoom(0.25));
-      document.getElementById('btnZoomOut').addEventListener('click', () => updateZoom(-0.25));
-      document.getElementById('btnZoomReset').addEventListener('click', resetZoom);
-      document.getElementById('btnToggleFullscreen').addEventListener('click', toggleFullscreenViewer);
-      document.getElementById('btnExitFullscreenTip').addEventListener('click', toggleFullscreenViewer);
-
-      const guideImg = document.getElementById('guideImage');
-      const container = document.getElementById('imageViewerContainer');
-
-      guideImg.addEventListener('dblclick', resetZoom);
-
-      container.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const delta = e.deltaY < 0 ? 0.15 : -0.15;
-        updateZoom(delta);
-      });
-
-      // Mouse drag for panning
-      guideImg.addEventListener('mousedown', (e) => {
-        if (scale <= 1) return;
-        isDragging = true;
-        startX = e.clientX - panX;
-        startY = e.clientY - panY;
-        guideImg.classList.replace('img-grab', 'img-grabbing');
-      });
-
-      window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        panX = e.clientX - startX;
-        panY = e.clientY - startY;
-        applyTransform();
-      });
-
-      window.addEventListener('mouseup', () => {
-        isDragging = false;
-        guideImg.classList.replace('img-grabbing', 'img-grab');
-      });
-    }
-
-    function loadUploadedImage(file) {
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const guideImg = document.getElementById('guideImage');
-        guideImg.src = e.target.result;
-
-        document.getElementById('uploadDropzone').classList.add('hidden');
-        document.getElementById('imageViewerContainer').classList.remove('hidden');
-        document.getElementById('imageViewerControls').classList.remove('hidden');
-        document.getElementById('guideFooterTip').classList.remove('hidden');
-
-        resetZoom();
-        showToast("Imagen de cuadrante cargada con encuadre completo.", "success");
-
-        detectMonthFromImage(file);
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function updateZoom(delta) {
-      scale = Math.min(Math.max(0.8, scale + delta), 4);
-      if (scale <= 1) {
-        panX = 0;
-        panY = 0;
-      }
-      applyTransform();
-    }
-
-    function resetZoom() {
-      scale = 1;
-      panX = 0;
-      panY = 0;
-      applyTransform();
-    }
-
-    function applyTransform() {
-      const guideImg = document.getElementById('guideImage');
-      guideImg.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-    }
-
-    function toggleFullscreenViewer() {
-      const panel = document.getElementById('leftQuadrantPanel');
-      const exitTipBtn = document.getElementById('btnExitFullscreenTip');
-      
-      panel.classList.toggle('fullscreen-viewer');
-      if (panel.classList.contains('fullscreen-viewer')) {
-        exitTipBtn.classList.remove('hidden');
-        showToast("Modo pantalla completa activado.", "info");
-      } else {
-        exitTipBtn.classList.add('hidden');
-      }
-      resetZoom();
-    }
-
-    async function detectMonthFromImage(file) {
-      const ocrLoader = document.getElementById('ocrLoader');
-      ocrLoader.classList.remove('hidden');
-
-      const nameLower = file.name.toLowerCase();
-      let matchedMonth = -1;
-      
-      monthNames.forEach((m, idx) => {
-        if (nameLower.includes(m.toLowerCase())) matchedMonth = idx;
-      });
-
-      if (matchedMonth !== -1) {
-        currentMonth = matchedMonth;
-        renderCalendar();
-        ocrLoader.classList.add('hidden');
-        showToast(`Mes detectado por nombre: ${monthNames[matchedMonth]}`, "success");
+      if (entries.length === 0) {
+        showToast("Primero marca al menos un turno en el calendario.", "warning");
         return;
       }
 
+      const dayCount = entries.filter(([_, t]) => t === 'D').length;
+      const nightCount = entries.filter(([_, t]) => t === 'N').length;
+
+      document.getElementById('gcalModalMonthName').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+      document.getElementById('gcalModalDayCount').textContent = dayCount;
+      document.getElementById('gcalModalNightCount').textContent = nightCount;
+
+      document.getElementById('gcalConfirmModal').classList.remove('hidden');
+    }
+
+    function closeGCalConfirmModal() {
+      document.getElementById('gcalConfirmModal').classList.add('hidden');
+    }
+
+    function initGoogleOAuth(onSuccessCallback) {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        showToast("Servicio de Google OAuth no disponible.", "warning");
+        return false;
+      }
+
       try {
-        if (typeof Tesseract !== 'undefined') {
-          const result = await Tesseract.recognize(file, 'spa', { logger: () => {} });
-          const text = result.data.text.toLowerCase();
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: HARDCODED_GOOGLE_CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/calendar',
+          callback: async (tokenResponse) => {
+            if (tokenResponse.error) {
+              showToast("Error de autenticación con Google: " + tokenResponse.error, "warning");
+              return;
+            }
+            googleAccessToken = tokenResponse.access_token;
+            showToast("Conectado con Google Calendar.", "success");
+            if (onSuccessCallback) {
+              await onSuccessCallback();
+            }
+          },
+        });
+        return true;
+      } catch (err) {
+        console.error("Error inicializando Google OAuth:", err);
+        showToast("Error en cliente Google OAuth: " + err.message, "warning");
+        return false;
+      }
+    }
 
-          monthNames.forEach((m, idx) => {
-            if (text.includes(m.toLowerCase())) matchedMonth = idx;
-          });
+    // Fetch existing events from 'Turnos Lore' Google Calendar
+    async function fetchEventsFromGoogleCalendar(accessToken) {
+      try {
+        showToast("Buscando turnos en tu Google Calendar...", "info");
+        const targetCalendarId = await getOrCreateTargetCalendar(accessToken);
+        
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=2500`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
 
-          const yearMatch = text.match(/202[4-9]/);
-          if (yearMatch) {
-            currentYear = parseInt(yearMatch[0]);
+        if (!res.ok) {
+          throw new Error("No se pudieron obtener los eventos de tu calendario de Google.");
+        }
+
+        const data = await res.json();
+        const items = data.items || [];
+        let loadedCount = 0;
+
+        items.forEach(item => {
+          if (!item.summary) return;
+          const summaryLower = item.summary.trim().toLowerCase();
+          const startDate = item.start?.date || item.start?.dateTime?.split('T')[0];
+
+          if (startDate) {
+            if (summaryLower.includes('lore día') || summaryLower.includes('lore dia')) {
+              shiftData[startDate] = 'D';
+              loadedCount++;
+            } else if (summaryLower.includes('lore noche')) {
+              shiftData[startDate] = 'N';
+              loadedCount++;
+            }
           }
+        });
 
-          if (matchedMonth !== -1) {
-            currentMonth = matchedMonth;
-            renderCalendar();
-            showToast(`Mes detectado por OCR: ${monthNames[matchedMonth]} ${currentYear}`, "success");
-          }
+        renderCalendar();
+        if (loadedCount > 0) {
+          showToast(`¡Éxito! Se han cargado ${loadedCount} turnos guardados desde "Turnos Lore".`, "success");
+        } else {
+          showToast(`Conectado a Google Calendar. No se encontraron turnos previos marcados.`, "info");
         }
       } catch (err) {
-        console.warn("OCR skipped:", err);
-      } finally {
-        ocrLoader.classList.add('hidden');
+        console.error("Error al cargar eventos de Google Calendar:", err);
+        showToast("Error al importar turnos: " + err.message, "warning");
+      }
+    }
+
+    function loadFromGoogleCalendarFlow() {
+      if (!googleAccessToken) {
+        const initialized = initGoogleOAuth(async () => {
+          await fetchEventsFromGoogleCalendar(googleAccessToken);
+        });
+        if (initialized) {
+          googleTokenClient.requestAccessToken({ prompt: '' });
+        }
+      } else {
+        fetchEventsFromGoogleCalendar(googleAccessToken);
+      }
+    }
+
+    // Helper to get existing 'Turnos Lore' calendar or create a new one
+    async function getOrCreateTargetCalendar(accessToken) {
+      const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (!listRes.ok) throw new Error("No se pudo obtener la lista de calendarios de tu cuenta");
+      
+      const listData = await listRes.json();
+      const existingCal = listData.items?.find(c => c.summary && c.summary.trim().toLowerCase() === "turnos lore");
+      
+      if (existingCal) {
+        return existingCal.id;
+      }
+
+      const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          summary: "Turnos Lore",
+          description: "Calendario de turnos de trabajo Lore"
+        })
+      });
+      if (!createRes.ok) throw new Error("No se pudo crear el calendario 'Turnos Lore'");
+      
+      const newCal = await createRes.json();
+      return newCal.id;
+    }
+
+    function startGoogleSyncFlow() {
+      closeGCalConfirmModal();
+
+      if (!googleAccessToken) {
+        const initialized = initGoogleOAuth(async () => {
+          await executeGoogleCalendarSync();
+        });
+        if (initialized) {
+          googleTokenClient.requestAccessToken({ prompt: '' });
+        }
+      } else {
+        executeGoogleCalendarSync();
       }
     }
 
