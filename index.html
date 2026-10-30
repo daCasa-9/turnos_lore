@@ -143,11 +143,30 @@
             </button>
           </div>
 
-          <!-- Clear All Shifts Button -->
-          <button id="btnClearShifts" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            <span>Limpiar Mes</span>
-          </button>
+          <!-- Header Action Buttons (Google Load, Sync, Clear) -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- Google Calendar Load Button -->
+            <button id="btnLoadFromGoogle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs px-3 py-1.5 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer" title="Cargar turnos guardados desde Google Calendar">
+              <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span>📥 Cargar</span>
+            </button>
+
+            <!-- Google Calendar Direct API Button -->
+            <button id="btnSyncGoogleCalendar" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center gap-1.5 cursor-pointer">
+              <svg class="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.545,6.477,2.545,12s4.476,10,10,10c5.768,0,9.587-4.056,9.587-9.762c0-0.708-0.076-1.398-0.218-2.001H12.545z"/>
+              </svg>
+              <span>G Sincronizar</span>
+            </button>
+
+            <!-- Clear All Shifts Button -->
+            <button id="btnClearShifts" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              <span>Limpiar Mes</span>
+            </button>
+          </div>
         </div>
 
         <!-- Mode / Paint Tool Selector -->
@@ -189,8 +208,8 @@
         </div>
       </div>
 
-      <!-- Shift Counters Summary & Export Bar -->
-      <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-4">
+      <!-- Shift Counters Summary Bar -->
+      <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3">
         
         <!-- Summary Stats -->
         <div class="grid grid-cols-3 gap-2 text-center">
@@ -208,37 +227,8 @@
           </div>
         </div>
 
-        <!-- Export Buttons Toolbar -->
-        <div class="flex items-center justify-between flex-wrap gap-2">
-          <div class="text-[11px] text-slate-400">
-            💡 Haz clic en los días para asignar turnos o carga tus turnos guardados de Google.
-          </div>
-
-          <div class="flex items-center gap-2 flex-wrap">
-            <!-- Google Calendar Load Button -->
-            <button id="btnLoadFromGoogle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer" title="Cargar turnos guardados desde Google Calendar">
-              <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-              </svg>
-              <span>Cargar de Google</span>
-            </button>
-
-            <!-- Google Calendar Direct API Button -->
-            <button id="btnSyncGoogleCalendar" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center gap-2 cursor-pointer">
-              <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.545,6.477,2.545,12s4.476,10,10,10c5.768,0,9.587-4.056,9.587-9.762c0-0.708-0.076-1.398-0.218-2.001H12.545z"/>
-              </svg>
-              <span>Sincronizar con Google Calendar</span>
-            </button>
-
-            <!-- ICS Export Button -->
-            <button id="btnExportICS" class="bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-purple-500/20 transition flex items-center gap-2 cursor-pointer">
-              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              <span>Descargar (.ICS)</span>
-            </button>
-          </div>
+        <div class="text-[11px] text-slate-400 text-center">
+          💡 Haz clic en los días para asignar turnos o usa los botones superiores para sincronizar con Google.
         </div>
       </div>
     </section>
@@ -474,11 +464,6 @@
       document.getElementById('btnNextMonth').addEventListener('click', () => changeMonth(1));
       document.getElementById('btnToday').addEventListener('click', goToToday);
       document.getElementById('btnClearShifts').addEventListener('click', clearShifts);
-
-      // Export ICS Modal Handlers
-      document.getElementById('btnExportICS').addEventListener('click', openExportModal);
-      document.getElementById('btnCancelModal').addEventListener('click', closeExportModal);
-      document.getElementById('btnConfirmExport').addEventListener('click', confirmAndGenerateICS);
 
       // Google Calendar Direct Sync & Import Handlers
       document.getElementById('btnLoadFromGoogle').addEventListener('click', loadFromGoogleCalendarFlow);
