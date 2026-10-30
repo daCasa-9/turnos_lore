@@ -140,10 +140,7 @@
 
             <button id="btnToday" class="px-2.5 py-1 bg-panelbg hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-semibold rounded-xl transition">
               Hoy
-            </button>
-          </div>
-
-          <!-- Header Action Buttons (Google Load, Sync, Clear) -->
+          <!-- Header Action Buttons (Google Load, Sync) -->
           <div class="flex items-center gap-2 flex-wrap">
             <!-- Google Calendar Load Button -->
             <button id="btnLoadFromGoogle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs px-3 py-1.5 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer" title="Cargar turnos guardados desde Google Calendar">
@@ -159,12 +156,6 @@
                 <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.545,6.477,2.545,12s4.476,10,10,10c5.768,0,9.587-4.056,9.587-9.762c0-0.708-0.076-1.398-0.218-2.001H12.545z"/>
               </svg>
               <span>G Sincronizar</span>
-            </button>
-
-            <!-- Clear All Shifts Button -->
-            <button id="btnClearShifts" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-              <span>Limpiar Mes</span>
             </button>
           </div>
         </div>
@@ -187,6 +178,13 @@
             </button>
             <button id="toolFree" class="tool-btn px-3 py-1.5 rounded-xl text-slate-400 font-semibold bg-panelbg hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5">
               <span>⚪ Borrar</span>
+            </button>
+            <!-- Clear All Shifts Button with SVG Icon -->
+            <button id="btnClearShifts" class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ml-1" title="Limpiar todos los turnos del mes">
+              <svg class="w-3.5 h-3.5 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              <span>Limpiar Mes</span>
             </button>
           </div>
         </div>
@@ -346,48 +344,7 @@
     </div>
   </div>
 
-  <!-- MODAL 2: Confirm Export ICS Modal -->
-  <div id="exportConfirmModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-cardbg border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg>
-        </div>
-        <div>
-          <h3 class="text-base font-bold text-white leading-tight">¿Descargar archivo .ICS?</h3>
-          <p class="text-xs text-slate-400">Se generará un archivo universal para importar en iPhone, Outlook o Android</p>
-        </div>
-      </div>
-
-      <div class="bg-panelbg/60 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
-        <div class="flex justify-between text-slate-300">
-          <span>Mes a exportar:</span>
-          <span id="modalMonthName" class="font-bold text-white">--</span>
-        </div>
-        <div class="flex justify-between text-amber-300">
-          <span>Eventos Turno de Día (🟡):</span>
-          <span id="modalDayCount" class="font-bold">0</span>
-        </div>
-        <div class="flex justify-between text-purple-300">
-          <span>Eventos Turno de Noche (🟣):</span>
-          <span id="modalNightCount" class="font-bold">0</span>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-2 pt-2">
-        <button id="btnCancelModal" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-panelbg hover:bg-slate-700 border border-slate-700 transition cursor-pointer">
-          Cancelar
-        </button>
-        <button id="btnConfirmExport" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 shadow-md transition cursor-pointer">
-          Descargar Archivo .ICS
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 3: Google Calendar Live Progress Monitor -->
+  <!-- MODAL 2: Google Calendar Live Progress Monitor -->
   <div id="googleSyncProgressModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-cardbg border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-center">
       <div id="syncModalIcon" class="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
@@ -550,7 +507,6 @@
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Attempt loading sw.js if deployed, fallback to Blob inline SW
           navigator.serviceWorker.register('./sw.js').catch(() => {
             const swBlob = new Blob([swCode], { type: 'text/javascript' });
             const swURL = URL.createObjectURL(swBlob);
@@ -944,7 +900,6 @@
         showToast("Buscando turnos en tu Google Calendar...", "info");
         const targetCalendarId = await getOrCreateTargetCalendar(accessToken);
         
-        // Petición con no-cache para asegurar leer los datos más recientes de Google Calendar
         const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=2500&singleEvents=true`, {
           headers: { 
             'Authorization': `Bearer ${accessToken}`,
@@ -959,7 +914,6 @@
         const data = await res.json();
         const items = data.items || [];
 
-        // Limpieza de memoria local del mes actual para reflejar borrados o cambios en Google Calendar
         const datesInCurrentMonth = Object.keys(shiftData).filter(d => {
           const [y, m] = d.split('-').map(Number);
           return y === currentYear && m === (currentMonth + 1);
@@ -1127,7 +1081,6 @@
         const data = await res.json();
         const existingItems = data.items || [];
 
-        // Agrupar eventos existentes de "Lore" por fecha YYYY-MM-DD
         const existingEventsByDate = {};
         existingItems.forEach(item => {
           if (!item.summary) return;
@@ -1146,7 +1099,7 @@
 
         for (let i = 0; i < allMonthDates.length; i++) {
           const dateStr = allMonthDates[i];
-          const appShift = shiftData[dateStr]; // 'D', 'N', o undefined
+          const appShift = shiftData[dateStr];
           const existingList = existingEventsByDate[dateStr] || [];
 
           updateSyncProgress(i + 1, allMonthDates.length, `Procesando fecha ${dateStr}`);
@@ -1164,7 +1117,6 @@
             const endDateStr = `${nextY}-${nextM}-${nextD}`;
 
             if (existingList.length > 0) {
-              // Ya existe evento en esta fecha: actualizar el primero si cambia y eliminar duplicados extra
               const primaryEvent = existingList[0];
               const isSameSummary = primaryEvent.summary === expectedSummary;
               const isSameColor = primaryEvent.colorId === expectedColorId;
@@ -1195,7 +1147,6 @@
                 successCount++;
               }
 
-              // Si había más de 1 evento creado por error en el mismo día, eliminar los sobrantes
               for (let k = 1; k < existingList.length; k++) {
                 try {
                   await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${encodeURIComponent(existingList[k].id)}`, {
@@ -1206,7 +1157,6 @@
               }
 
             } else {
-              // Crear nuevo evento si no existía ningún turno en esta fecha
               try {
                 const createRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
                   method: 'POST',
@@ -1231,7 +1181,6 @@
             }
 
           } else {
-            // El día en la app es libre. Si existía un turno previo en Google Calendar, eliminarlo.
             if (existingList.length > 0) {
               for (const ev of existingList) {
                 try {
@@ -1256,90 +1205,6 @@
         showToast("Error en sincronización: " + err.message, "warning");
         closeSyncProgressModal();
       }
-    }
-
-    // --- ICS EXPORT LOGIC ---
-    function openExportModal() {
-      const entries = Object.entries(shiftData).filter(([dateStr]) => {
-        const [y, m] = dateStr.split('-').map(Number);
-        return y === currentYear && m === (currentMonth + 1);
-      });
-
-      if (entries.length === 0) {
-        showToast("Marca primero al menos un turno en el calendario.", "warning");
-        return;
-      }
-
-      const dayCount = entries.filter(([_, t]) => t === 'D').length;
-      const nightCount = entries.filter(([_, t]) => t === 'N').length;
-
-      document.getElementById('modalMonthName').textContent = `${monthNames[currentMonth]} ${currentYear}`;
-      document.getElementById('modalDayCount').textContent = dayCount;
-      document.getElementById('modalNightCount').textContent = nightCount;
-
-      document.getElementById('exportConfirmModal').classList.remove('hidden');
-    }
-
-    function closeExportModal() {
-      document.getElementById('exportConfirmModal').classList.add('hidden');
-    }
-
-    function confirmAndGenerateICS() {
-      closeExportModal();
-
-      const entries = Object.entries(shiftData).filter(([dateStr]) => {
-        const [y, m] = dateStr.split('-').map(Number);
-        return y === currentYear && m === (currentMonth + 1);
-      });
-
-      if (entries.length === 0) return;
-
-      let icsContent = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Gestor Lore//Turnos Trabajo//ES",
-        "CALSCALE:GREGORIAN",
-        "METHOD:PUBLISH"
-      ];
-
-      entries.forEach(([dateStr, type]) => {
-        const cleanDate = dateStr.replace(/-/g, '');
-        
-        const dateObj = new Date(dateStr + 'T00:00:00');
-        dateObj.setDate(dateObj.getDate() + 1);
-        const nextY = dateObj.getFullYear();
-        const nextM = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const nextD = String(dateObj.getDate()).padStart(2, '0');
-        const cleanNextDate = `${nextY}${nextM}${nextD}`;
-
-        const summary = (type === 'D') ? "Lore día" : "Lore noche";
-        const category = (type === 'D') ? "TURNO DIA" : "TURNO NOCHE";
-
-        icsContent.push(
-          "BEGIN:VEVENT",
-          `UID:shift-${cleanDate}-${type}@gestorlore`,
-          `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
-          `DTSTART;VALUE=DATE:${cleanDate}`,
-          `DTEND;VALUE=DATE:${cleanNextDate}`,
-          `SUMMARY:${summary}`,
-          `DESCRIPTION:Turno de trabajo Lore (${type === 'D' ? 'Día' : 'Noche'})`,
-          `CATEGORIES:${category}`,
-          "TRANSP:TRANSPARENT",
-          "END:VEVENT"
-        );
-      });
-
-      icsContent.push("END:VCALENDAR");
-
-      const blob = new Blob([icsContent.join("\r\n")], { type: 'text/calendar;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.setAttribute('download', `Turnos_${monthNames[currentMonth]}_${currentYear}.ics`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      showToast(`Archivo .ICS generado correctamente.`, "success");
     }
 
     // --- TOAST UTILITY ---
