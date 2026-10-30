@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="Turnos Lore">
   <meta name="description" content="Gestor y Calendario de Turnos de Trabajo para Lore con Sincronización Google Calendar">
   
-  <!-- Apple Touch Icon (Professional Dual-Shift Calendar - No Letters) -->
+  <!-- Apple Touch Icon (Professional Dual-Shift Calendar - Clean Vector, No Letters) -->
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%230f172a'/><stop offset='50%' stop-color='%231e1b4b'/><stop offset='100%' stop-color='%23090d16'/></linearGradient><linearGradient id='calHeader' x1='0%' y1='0%' x2='100%' y2='0%'><stop offset='0%' stop-color='%23f59e0b'/><stop offset='50%' stop-color='%238b5cf6'/><stop offset='100%' stop-color='%233b82f6'/></linearGradient><linearGradient id='sun' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%23fef08a'/><stop offset='100%' stop-color='%23f59e0b'/></linearGradient><linearGradient id='moon' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%23f3e8ff'/><stop offset='100%' stop-color='%239333ea'/></linearGradient></defs><rect width='512' height='512' rx='115' fill='url(%23bg)'/><rect width='504' height='504' x='4' y='4' rx='111' fill='none' stroke='%238b5cf6' stroke-opacity='0.3' stroke-width='4'/><rect x='76' y='100' width='360' height='340' rx='48' fill='%231e293b' stroke='%23334155' stroke-width='6'/><path d='M76 148c0-26.5 21.5-48 48-48h264c26.5 0 48 21.5 48 48v24H76v-24z' fill='url(%23calHeader)'/><rect x='150' y='76' width='24' height='48' rx='12' fill='%23e2e8f0'/><rect x='338' y='76' width='24' height='48' rx='12' fill='%23e2e8f0'/><g transform='translate(130, 210)'><circle cx='50' cy='50' r='28' fill='url(%23sun)'/><path d='M50 8v12M50 80v12M8 50h12M80 50h12M20 20l8.5 8.5M71.5 71.5l8.5 8.5M20 80l8.5-8.5M71.5 28.5l8.5-8.5' stroke='%23fbbf24' stroke-width='6' stroke-linecap='round'/></g><g transform='translate(290, 210)'><path d='M55 12a36 36 0 1 0 24 60 40 40 0 1 1-24-60z' fill='url(%23moon)'/><path d='M22 18l2.5 5 5 2.5-5 2.5-2.5 5-2.5-5-5-2.5 5-2.5z' fill='%23fef08a'/><path d='M78 22l1.5 3 3 1.5-3 1.5-1.5 3-1.5-3-3-1.5 3-1.5z' fill='%23f3e8ff'/></g><path d='M180 380c25 18 55 26 86 24 35-2 65-18 86-42' fill='none' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' stroke-dasharray='8 6'/><polygon points='356,354 364,368 348,368' fill='%2338bdf8'/></svg>">
 
   <!-- Tailwind CSS CDN -->
@@ -83,15 +83,18 @@
   <header class="bg-panelbg/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 py-3 shadow-md">
     <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/20 font-black text-xl">
-          L
+        <!-- New Professional Icon (No letters) -->
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-purple-600 to-blue-600 p-2 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+          <svg class="w-full h-full fill-current" viewBox="0 0 24 24">
+            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
+          </svg>
         </div>
         <div>
           <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-2">
             Gestor de Turnos Lore 
             <span class="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">PWA App</span>
           </h1>
-          <p class="text-xs text-slate-400">3.1 Guía Visual + Calendario Interactivo con Sincronización Directa a Google Calendar</p>
+          <p class="text-xs text-slate-400">Guía Visual + Calendario Interactivo con Sincronización Directa a Google Calendar</p>
         </div>
       </div>
 
@@ -433,6 +436,11 @@
       document.getElementById('btnCancelGCalModal').addEventListener('click', closeGCalConfirmModal);
       document.getElementById('btnConfirmGCalSync').addEventListener('click', startGoogleSyncFlow);
       document.getElementById('btnCloseSyncModal').addEventListener('click', closeSyncProgressModal);
+
+      // 🔄 Carga automática de Google Calendar al abrir si la sesión está activa
+      setTimeout(() => {
+        checkAutoLoadGoogleCalendar();
+      }, 600);
     });
 
     // =========================================================================
@@ -467,7 +475,7 @@
 
       // 2. Register Service Worker for Offline Availability
       const swCode = `
-        const CACHE_NAME = 'turnos-lore-cache-v1';
+        const CACHE_NAME = 'turnos-lore-cache-v2';
         const ASSETS = [
           './',
           'https://cdn.tailwindcss.com',
@@ -649,6 +657,11 @@
         currentYear++;
       }
       renderCalendar();
+      // Auto-load month data from Google if logged in
+      const storedToken = getStoredGoogleToken();
+      if (storedToken) {
+        fetchEventsFromGoogleCalendar(storedToken, true);
+      }
     }
 
     function goToToday() {
@@ -656,6 +669,10 @@
       currentMonth = today.getMonth();
       renderCalendar();
       showToast("Vista de calendario actualizada a hoy", "info");
+      const storedToken = getStoredGoogleToken();
+      if (storedToken) {
+        fetchEventsFromGoogleCalendar(storedToken, true);
+      }
     }
 
     function clearShifts() {
@@ -844,6 +861,35 @@
       resetImageTransform();
     }
 
+    // --- GOOGLE TOKEN PERSISTENCE & AUTO-LOAD UTILITIES ---
+    function saveGoogleToken(token, expiresInSeconds = 3500) {
+      googleAccessToken = token;
+      const expiresAt = Date.now() + (expiresInSeconds * 1000);
+      try {
+        localStorage.setItem('gcal_access_token', token);
+        localStorage.setItem('gcal_token_expires', expiresAt.toString());
+      } catch (e) { console.error(e); }
+    }
+
+    function getStoredGoogleToken() {
+      try {
+        const token = localStorage.getItem('gcal_access_token');
+        const expiresAt = parseInt(localStorage.getItem('gcal_token_expires') || '0', 10);
+        if (token && Date.now() < expiresAt) {
+          return token;
+        }
+      } catch (e) { console.error(e); }
+      return null;
+    }
+
+    function checkAutoLoadGoogleCalendar() {
+      const storedToken = getStoredGoogleToken();
+      if (storedToken) {
+        googleAccessToken = storedToken;
+        fetchEventsFromGoogleCalendar(storedToken, true);
+      }
+    }
+
     // --- GOOGLE CALENDAR DIRECT API SYNC & IMPORT LOGIC ---
     function openGCalConfirmModal() {
       const entries = Object.entries(shiftData).filter(([dateStr]) => {
@@ -885,7 +931,7 @@
               showToast("Error de autenticación con Google: " + tokenResponse.error, "warning");
               return;
             }
-            googleAccessToken = tokenResponse.access_token;
+            saveGoogleToken(tokenResponse.access_token, tokenResponse.expires_in || 3500);
             showToast("Conectado con Google Calendar.", "success");
             if (onSuccessCallback) {
               await onSuccessCallback();
@@ -900,9 +946,9 @@
       }
     }
 
-    async function fetchEventsFromGoogleCalendar(accessToken) {
+    async function fetchEventsFromGoogleCalendar(accessToken, isAutoLoad = false) {
       try {
-        showToast("Buscando turnos en tu Google Calendar...", "info");
+        if (!isAutoLoad) showToast("Buscando turnos en tu Google Calendar...", "info");
         const targetCalendarId = await getOrCreateTargetCalendar(accessToken);
         
         const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=2500&singleEvents=true`, {
@@ -913,6 +959,13 @@
         });
 
         if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem('gcal_access_token');
+            localStorage.removeItem('gcal_token_expires');
+            googleAccessToken = null;
+            if (!isAutoLoad) showToast("La sesión de Google ha caducado. Vuelve a pulsar en Cargar.", "warning");
+            return;
+          }
           throw new Error("No se pudieron obtener los eventos del calendario.");
         }
 
@@ -947,26 +1000,28 @@
 
         renderCalendar();
         if (loadedCount > 0) {
-          showToast(`¡Éxito! Se han cargado ${loadedCount} turnos de ${monthNames[currentMonth]} ${currentYear} desde Google Calendar.`, "success");
-        } else {
+          showToast(`¡Cargados ${loadedCount} turnos para ${monthNames[currentMonth]} ${currentYear}!`, "success");
+        } else if (!isAutoLoad) {
           showToast(`Sincronizado con Google Calendar. No se encontraron turnos para ${monthNames[currentMonth]} ${currentYear}.`, "info");
         }
       } catch (err) {
         console.error("Error al cargar eventos de Google Calendar:", err);
-        showToast("Error al importar turnos: " + err.message, "warning");
+        if (!isAutoLoad) showToast("Error al importar turnos: " + err.message, "warning");
       }
     }
 
     function loadFromGoogleCalendarFlow() {
-      if (!googleAccessToken) {
+      const storedToken = getStoredGoogleToken();
+      if (storedToken) {
+        googleAccessToken = storedToken;
+        fetchEventsFromGoogleCalendar(storedToken, false);
+      } else {
         const initialized = initGoogleOAuth(async () => {
-          await fetchEventsFromGoogleCalendar(googleAccessToken);
+          await fetchEventsFromGoogleCalendar(googleAccessToken, false);
         });
         if (initialized) {
           googleTokenClient.requestAccessToken({ prompt: '' });
         }
-      } else {
-        fetchEventsFromGoogleCalendar(googleAccessToken);
       }
     }
 
@@ -1003,15 +1058,17 @@
     function startGoogleSyncFlow() {
       closeGCalConfirmModal();
 
-      if (!googleAccessToken) {
+      const storedToken = getStoredGoogleToken();
+      if (storedToken) {
+        googleAccessToken = storedToken;
+        executeGoogleCalendarSync();
+      } else {
         const initialized = initGoogleOAuth(async () => {
           await executeGoogleCalendarSync();
         });
         if (initialized) {
           googleTokenClient.requestAccessToken({ prompt: '' });
         }
-      } else {
-        executeGoogleCalendarSync();
       }
     }
 
