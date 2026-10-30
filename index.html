@@ -26,11 +26,8 @@
   <!-- Google Fonts Inter -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
   
-  <!-- Google Identity Services Library for OAuth 2.0 -->
+  <!-- Google Identity Services Library for OAuth 2.0 Direct Sync -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <!-- Client-side OCR library for smart month detection -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <style>
     body {
@@ -58,7 +55,6 @@
     .img-grabbing {
       cursor: grabbing;
     }
-    /* Fullscreen overlay styling for quadrant image viewer */
     .fullscreen-viewer {
       position: fixed !important;
       inset: 0 !important;
@@ -72,7 +68,7 @@
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-purple-500 selection:text-white">
 
-  <!-- Header -->
+  <!-- Header Section -->
   <header class="bg-panelbg/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 py-3 shadow-md">
     <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
       <div class="flex items-center gap-3">
@@ -158,14 +154,7 @@
 
       <!-- Image Viewer Container (Appears after upload) -->
       <div id="imageViewerContainer" class="flex-1 relative overflow-hidden rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center hidden">
-        <!-- Object-fit: contain ensures full picture is immediately visible without crop -->
         <img id="guideImage" src="" alt="Guía Cuadrante" class="w-full h-full object-contain transition-transform duration-75 img-grab select-none">
-        
-        <!-- Loading Overlay for OCR Month Detection -->
-        <div id="ocrLoader" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20 hidden">
-          <div class="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <p class="text-xs font-semibold text-purple-300">Detectando mes y año del cuadrante...</p>
-        </div>
       </div>
 
       <div id="guideFooterTip" class="mt-3 text-[11px] text-slate-400 flex items-center justify-between gap-1.5 hidden">
@@ -186,7 +175,7 @@
             </button>
             
             <h2 id="calendarTitle" class="text-lg font-black text-white tracking-tight min-w-[160px] text-center">
-              Octubre 2026
+              Cargando...
             </h2>
 
             <button id="btnNextMonth" class="p-2 bg-panelbg hover:bg-slate-700 text-slate-300 rounded-xl transition" title="Mes Siguiente">
@@ -240,7 +229,7 @@
 
         <!-- Dynamic Calendar Grid -->
         <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 text-xs">
-          <!-- Dynamically populated -->
+          <!-- Dynamically populated by JS -->
         </div>
       </div>
 
@@ -259,7 +248,7 @@
           </div>
           <div class="bg-panelbg/60 border border-slate-800 p-2.5 rounded-2xl">
             <div class="text-[11px] text-slate-400 font-medium">Total Días Libres (⚪)</div>
-            <div id="statFreeCount" class="text-base font-black text-slate-300">31</div>
+            <div id="statFreeCount" class="text-base font-black text-slate-300">0</div>
           </div>
         </div>
 
@@ -322,7 +311,7 @@
         </div>
         <div class="flex justify-between text-slate-300">
           <span>Mes a sincronizar:</span>
-          <span id="gcalModalMonthName" class="font-bold text-white">Octubre 2026</span>
+          <span id="gcalModalMonthName" class="font-bold text-white">--</span>
         </div>
         <div class="flex justify-between text-amber-300">
           <span>Eventos Turno de Día (🟡):</span>
@@ -333,8 +322,8 @@
           <span id="gcalModalNightCount" class="font-bold">0</span>
         </div>
         <div class="flex justify-between text-slate-400 text-[11px] pt-1 border-t border-slate-700/60">
-          <span>Tipo de evento:</span>
-          <span class="font-semibold text-slate-200">Todo el día (All-Day)</span>
+          <span>Nombres de los eventos:</span>
+          <span class="font-semibold text-slate-200">"Lore día" y "Lore noche"</span>
         </div>
       </div>
 
@@ -367,7 +356,7 @@
       <div class="bg-panelbg/60 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
         <div class="flex justify-between text-slate-300">
           <span>Mes a exportar:</span>
-          <span id="modalMonthName" class="font-bold text-white">Octubre 2026</span>
+          <span id="modalMonthName" class="font-bold text-white">--</span>
         </div>
         <div class="flex justify-between text-amber-300">
           <span>Eventos Turno de Día (🟡):</span>
@@ -424,15 +413,15 @@
   <!-- JavaScript App Logic -->
   <script>
     // =========================================================================
-    // 🔑 TU CLIENT ID DE GOOGLE OAUTH HARDCODED EXACTO
+    // 🔑 CLIENT ID DE GOOGLE OAUTH CONFIGURADO DIRECTAMENTE
     // =========================================================================
     const HARDCODED_GOOGLE_CLIENT_ID = "15120054709-9i1jcbavpt6iijlod48k05hg0dhkhg9i.apps.googleusercontent.com";
 
-    // Application State
+    // Global State Variables
     let shiftData = {}; // Stores shifts in format 'YYYY-MM-DD': 'D' | 'N'
     const today = new Date();
     let currentYear = today.getFullYear();
-    let currentMonth = today.getMonth(); // 0-indexed (0 = Enero, 9 = Octubre)
+    let currentMonth = today.getMonth(); // 0-indexed (0 = Enero)
     let activeTool = 'TOGGLE'; // Modes: 'TOGGLE', 'D', 'N', 'FREE'
 
     // Google OAuth State
@@ -445,17 +434,18 @@
     let panY = 0;
     let isDragging = false;
     let startX = 0, startY = 0;
+    let isFullscreen = false;
 
     const monthNames = [
       "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
       "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     ];
 
-    // DOM Ready Listener
+    // DOM Ready Initialization
     document.addEventListener('DOMContentLoaded', () => {
       renderCalendar();
-      setupImageEvents();
       setupToolButtons();
+      setupImageEvents();
 
       // Calendar Navigation Controls
       document.getElementById('btnPrevMonth').addEventListener('click', () => changeMonth(-1));
@@ -468,7 +458,7 @@
       document.getElementById('btnCancelModal').addEventListener('click', closeExportModal);
       document.getElementById('btnConfirmExport').addEventListener('click', confirmAndGenerateICS);
 
-      // Google Calendar Direct Sync & Import Flow Handlers
+      // Google Calendar Direct Sync & Import Handlers
       document.getElementById('btnLoadFromGoogle').addEventListener('click', loadFromGoogleCalendarFlow);
       document.getElementById('btnSyncGoogleCalendar').addEventListener('click', openGCalConfirmModal);
       document.getElementById('btnCancelGCalModal').addEventListener('click', closeGCalConfirmModal);
@@ -490,7 +480,7 @@
       let startDayOfWeek = firstDay.getDay() - 1;
       if (startDayOfWeek === -1) startDayOfWeek = 6;
 
-      // Empty lead cells
+      // Render empty lead cells
       for (let i = 0; i < startDayOfWeek; i++) {
         const emptyCell = document.createElement('div');
         emptyCell.className = 'h-16 rounded-2xl bg-slate-900/30 border border-slate-900/50 opacity-20';
@@ -509,7 +499,6 @@
         
         let cellClasses = 'h-16 rounded-2xl p-2 border transition-all duration-150 flex flex-col justify-between cursor-pointer select-none relative overflow-hidden ';
 
-        // Highlight current day if applicable
         const isToday = (day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear());
         if (isToday) {
           cellClasses += 'ring-2 ring-blue-500/80 ';
@@ -548,7 +537,6 @@
       document.getElementById('statFreeCount').textContent = daysInMonth - (dayCount + nightCount);
     }
 
-    // Handle shift selection based on chosen active paint tool
     function handleCellClick(dateStr) {
       if (activeTool === 'TOGGLE') {
         const current = shiftData[dateStr];
@@ -610,6 +598,7 @@
 
       tools.forEach(t => {
         const btn = document.getElementById(t.id);
+        if (!btn) return;
         btn.addEventListener('click', () => {
           activeTool = t.mode;
           document.querySelectorAll('.tool-btn').forEach(b => {
@@ -633,6 +622,142 @@
       const dropzone = document.getElementById('uploadDropzone');
       const inputUpload = document.getElementById('inputImageUpload');
       const inputChange = document.getElementById('inputChangePhoto');
+      const guideImg = document.getElementById('guideImage');
+      const container = document.getElementById('imageViewerContainer');
+
+      if (dropzone && inputUpload) {
+        dropzone.addEventListener('click', () => inputUpload.click());
+        inputUpload.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleImageFile(e.target.files[0]);
+          }
+        });
+
+        dropzone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          dropzone.classList.add('border-purple-500');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+          dropzone.classList.remove('border-purple-500');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropzone.classList.remove('border-purple-500');
+          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleImageFile(e.dataTransfer.files[0]);
+          }
+        });
+      }
+
+      if (inputChange) {
+        inputChange.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleImageFile(e.target.files[0]);
+          }
+        });
+      }
+
+      // Zoom Controls
+      document.getElementById('btnZoomIn').addEventListener('click', () => {
+        scale = Math.min(scale * 1.25, 4);
+        applyTransform();
+      });
+
+      document.getElementById('btnZoomOut').addEventListener('click', () => {
+        scale = Math.max(scale / 1.25, 0.5);
+        applyTransform();
+      });
+
+      document.getElementById('btnZoomReset').addEventListener('click', resetImageTransform);
+
+      if (container) {
+        container.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          if (e.deltaY < 0) {
+            scale = Math.min(scale * 1.15, 4);
+          } else {
+            scale = Math.max(scale / 1.15, 0.5);
+          }
+          applyTransform();
+        });
+
+        container.addEventListener('mousedown', (e) => {
+          isDragging = true;
+          startX = e.clientX - panX;
+          startY = e.clientY - panY;
+          if (guideImg) guideImg.classList.replace('img-grab', 'img-grabbing');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          panX = e.clientX - startX;
+          panY = e.clientY - startY;
+          applyTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+          isDragging = false;
+          if (guideImg) guideImg.classList.replace('img-grabbing', 'img-grab');
+        });
+
+        container.addEventListener('dblclick', resetImageTransform);
+      }
+
+      // Fullscreen Toggle
+      document.getElementById('btnToggleFullscreen').addEventListener('click', toggleFullscreenViewer);
+      document.getElementById('btnExitFullscreenTip').addEventListener('click', toggleFullscreenViewer);
+    }
+
+    function handleImageFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        showToast("Por favor selecciona un archivo de imagen válido.", "warning");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.getElementById('guideImage');
+        img.src = e.target.result;
+        document.getElementById('uploadDropzone').classList.add('hidden');
+        document.getElementById('imageViewerContainer').classList.remove('hidden');
+        document.getElementById('imageViewerControls').classList.remove('hidden');
+        document.getElementById('guideFooterTip').classList.remove('hidden');
+        resetImageTransform();
+        showToast("Imagen del cuadrante cargada correctamente.", "success");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function applyTransform() {
+      const img = document.getElementById('guideImage');
+      if (img) {
+        img.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+      }
+    }
+
+    function resetImageTransform() {
+      scale = 1;
+      panX = 0;
+      panY = 0;
+      applyTransform();
+    }
+
+    function toggleFullscreenViewer() {
+      const panel = document.getElementById('leftQuadrantPanel');
+      const exitTip = document.getElementById('btnExitFullscreenTip');
+      isFullscreen = !isFullscreen;
+
+      if (isFullscreen) {
+        panel.classList.add('fullscreen-viewer');
+        exitTip.classList.remove('hidden');
+      } else {
+        panel.classList.remove('fullscreen-viewer');
+        exitTip.classList.add('hidden');
+      }
+      resetImageTransform();
+    }
+
     // --- GOOGLE CALENDAR DIRECT API SYNC & IMPORT LOGIC ---
     function openGCalConfirmModal() {
       const entries = Object.entries(shiftData).filter(([dateStr]) => {
@@ -661,7 +786,7 @@
 
     function initGoogleOAuth(onSuccessCallback) {
       if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-        showToast("Servicio de Google OAuth no disponible.", "warning");
+        showToast("Librería de Google OAuth no disponible todavía. Inténtalo en unos segundos.", "warning");
         return false;
       }
 
@@ -689,7 +814,6 @@
       }
     }
 
-    // Fetch existing events from 'Turnos Lore' Google Calendar
     async function fetchEventsFromGoogleCalendar(accessToken) {
       try {
         showToast("Buscando turnos en tu Google Calendar...", "info");
@@ -700,7 +824,7 @@
         });
 
         if (!res.ok) {
-          throw new Error("No se pudieron obtener los eventos de tu calendario de Google.");
+          throw new Error("No se pudieron obtener los eventos del calendario.");
         }
 
         const data = await res.json();
@@ -725,9 +849,9 @@
 
         renderCalendar();
         if (loadedCount > 0) {
-          showToast(`¡Éxito! Se han cargado ${loadedCount} turnos guardados desde "Turnos Lore".`, "success");
+          showToast(`¡Éxito! Se han cargado ${loadedCount} turnos guardados desde el calendario "Turnos Lore".`, "success");
         } else {
-          showToast(`Conectado a Google Calendar. No se encontraron turnos previos marcados.`, "info");
+          showToast(`Conectado a Google Calendar. No se encontraron turnos previos guardados.`, "info");
         }
       } catch (err) {
         console.error("Error al cargar eventos de Google Calendar:", err);
@@ -748,7 +872,6 @@
       }
     }
 
-    // Helper to get existing 'Turnos Lore' calendar or create a new one
     async function getOrCreateTargetCalendar(accessToken) {
       const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -791,6 +914,128 @@
         }
       } else {
         executeGoogleCalendarSync();
+      }
+    }
+
+    function openSyncProgressModal(total) {
+      const modal = document.getElementById('googleSyncProgressModal');
+      document.getElementById('syncModalTitle').textContent = "Sincronizando con Google Calendar";
+      document.getElementById('syncModalStatus').textContent = `Enviando 1 de ${total} eventos...`;
+      document.getElementById('syncProgressBar').style.width = '0%';
+      document.getElementById('syncModalActions').classList.add('hidden');
+      document.getElementById('syncModalIcon').innerHTML = `
+        <svg class="w-6 h-6 animate-spin text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+      `;
+      modal.classList.remove('hidden');
+    }
+
+    function updateSyncProgress(current, total, summary) {
+      const percentage = Math.round((current / total) * 100);
+      document.getElementById('syncProgressBar').style.width = `${percentage}%`;
+      document.getElementById('syncModalStatus').textContent = `[${current}/${total}] Añadiendo: ${summary}`;
+    }
+
+    function finishSyncProgress(successCount, failCount) {
+      document.getElementById('syncProgressBar').style.width = '100%';
+      const iconContainer = document.getElementById('syncModalIcon');
+      
+      if (failCount === 0) {
+        document.getElementById('syncModalTitle').textContent = "¡Sincronización completada!";
+        document.getElementById('syncModalStatus').textContent = `Se han añadido con éxito ${successCount} eventos al calendario "Turnos Lore" con sus colores correspondientes.`;
+        iconContainer.innerHTML = `<span class="text-2xl">✅</span>`;
+      } else {
+        document.getElementById('syncModalTitle').textContent = "Sincronización finalizada con advertencias";
+        document.getElementById('syncModalStatus').textContent = `Eventos creados: ${successCount}. Fallos: ${failCount}.`;
+        iconContainer.innerHTML = `<span class="text-2xl">⚠️</span>`;
+      }
+
+      document.getElementById('syncModalActions').classList.remove('hidden');
+    }
+
+    function closeSyncProgressModal() {
+      document.getElementById('googleSyncProgressModal').classList.add('hidden');
+    }
+
+    async function executeGoogleCalendarSync() {
+      if (!googleAccessToken) {
+        showToast("No se dispone de token de acceso.", "warning");
+        return;
+      }
+
+      const entries = Object.entries(shiftData).filter(([dateStr]) => {
+        const [y, m] = dateStr.split('-').map(Number);
+        return y === currentYear && m === (currentMonth + 1);
+      });
+
+      if (entries.length === 0) return;
+
+      openSyncProgressModal(entries.length);
+
+      try {
+        document.getElementById('syncModalStatus').textContent = "Buscando/Creando calendario 'Turnos Lore'...";
+        const targetCalendarId = await getOrCreateTargetCalendar(googleAccessToken);
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < entries.length; i++) {
+          const [dateStr, type] = entries[i];
+          
+          const dateObj = new Date(dateStr + 'T00:00:00');
+          dateObj.setDate(dateObj.getDate() + 1);
+          const nextYear = dateObj.getFullYear();
+          const nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const nextDay = String(dateObj.getDate()).padStart(2, '0');
+          const endDateStr = `${nextYear}-${nextMonth}-${nextDay}`;
+
+          const summary = (type === 'D') ? "Lore día" : "Lore noche";
+          const description = `Turno de trabajo asignado (${type === 'D' ? 'Día' : 'Noche'})`;
+          
+          // Google Calendar Color IDs: '5' = Banana (Yellow), '3' = Grape (Purple)
+          const colorId = (type === 'D') ? '5' : '3';
+
+          const eventBody = {
+            summary: summary,
+            description: description,
+            start: { date: dateStr },
+            end: { date: endDateStr },
+            colorId: colorId,
+            transparency: "transparent"
+          };
+
+          updateSyncProgress(i + 1, entries.length, summary);
+
+          try {
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${googleAccessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(eventBody)
+            });
+
+            if (response.ok) {
+              successCount++;
+            } else {
+              const errorData = await response.json();
+              console.error("GCal API error:", errorData);
+              failCount++;
+            }
+          } catch (err) {
+            console.error("Network error during sync:", err);
+            failCount++;
+          }
+        }
+
+        finishSyncProgress(successCount, failCount);
+
+      } catch (err) {
+        console.error("Error con el calendario Turnos Lore:", err);
+        showToast("Error al obtener/crear el calendario 'Turnos Lore': " + err.message, "warning");
+        closeSyncProgressModal();
       }
     }
 
@@ -878,232 +1123,10 @@
       showToast(`Archivo .ICS generado correctamente.`, "success");
     }
 
-    // --- GOOGLE CALENDAR DIRECT API SYNC LOGIC ---
-    function openGCalConfirmModal() {
-      const entries = Object.entries(shiftData).filter(([dateStr]) => {
-        const [y, m] = dateStr.split('-').map(Number);
-        return y === currentYear && m === (currentMonth + 1);
-      });
-
-      if (entries.length === 0) {
-        showToast("Primero marca al menos un turno en el calendario.", "warning");
-        return;
-      }
-
-      const dayCount = entries.filter(([_, t]) => t === 'D').length;
-      const nightCount = entries.filter(([_, t]) => t === 'N').length;
-
-      document.getElementById('gcalModalMonthName').textContent = `${monthNames[currentMonth]} ${currentYear}`;
-      document.getElementById('gcalModalDayCount').textContent = dayCount;
-      document.getElementById('gcalModalNightCount').textContent = nightCount;
-
-      document.getElementById('gcalConfirmModal').classList.remove('hidden');
-    }
-
-    function closeGCalConfirmModal() {
-      document.getElementById('gcalConfirmModal').classList.add('hidden');
-    }
-
-    function initGoogleOAuth() {
-      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-        showToast("Servicio de Google OAuth no disponible.", "warning");
-        return false;
-      }
-
-      try {
-        googleTokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: HARDCODED_GOOGLE_CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/calendar',
-          callback: async (tokenResponse) => {
-            if (tokenResponse.error) {
-              showToast("Error de autenticación con Google: " + tokenResponse.error, "warning");
-              return;
-            }
-            googleAccessToken = tokenResponse.access_token;
-            showToast("Autenticado con Google Calendar.", "success");
-            await executeGoogleCalendarSync();
-          },
-        });
-        return true;
-      } catch (err) {
-        console.error("Error inicializando Google OAuth:", err);
-        showToast("Error en cliente Google OAuth: " + err.message, "warning");
-        return false;
-      }
-    }
-
-    // Helper to get existing 'Turnos Lore' calendar or create a new one
-    async function getOrCreateTargetCalendar(accessToken) {
-      // 1. Fetch calendar list to check if 'Turnos Lore' already exists
-      const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      if (!listRes.ok) throw new Error("No se pudo obtener la lista de calendarios de tu cuenta");
-      
-      const listData = await listRes.json();
-      const existingCal = listData.items?.find(c => c.summary && c.summary.trim().toLowerCase() === "turnos lore");
-      
-      if (existingCal) {
-        return existingCal.id;
-      }
-
-      // 2. Create a new secondary calendar 'Turnos Lore' if not found
-      const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          summary: "Turnos Lore",
-          description: "Calendario de turnos de trabajo Lore"
-        })
-      });
-      if (!createRes.ok) throw new Error("No se pudo crear el calendario 'Turnos Lore'");
-      
-      const newCal = await createRes.json();
-      return newCal.id;
-    }
-
-    function startGoogleSyncFlow() {
-      closeGCalConfirmModal();
-
-      if (!googleTokenClient) {
-        const initialized = initGoogleOAuth();
-        if (!initialized) return;
-      }
-
-      // Trigger standard Google Account picker popup
-      googleTokenClient.requestAccessToken({ prompt: '' });
-    }
-
-    function openSyncProgressModal(total) {
-      const modal = document.getElementById('googleSyncProgressModal');
-      document.getElementById('syncModalTitle').textContent = "Sincronizando con Google Calendar";
-      document.getElementById('syncModalStatus').textContent = `Enviando 1 de ${total} eventos...`;
-      document.getElementById('syncProgressBar').style.width = '0%';
-      document.getElementById('syncModalActions').classList.add('hidden');
-      document.getElementById('syncModalIcon').innerHTML = `
-        <svg class="w-6 h-6 animate-spin text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-        </svg>
-      `;
-      modal.classList.remove('hidden');
-    }
-
-    function updateSyncProgress(current, total, summary) {
-      const percentage = Math.round((current / total) * 100);
-      document.getElementById('syncProgressBar').style.width = `${percentage}%`;
-      document.getElementById('syncModalStatus').textContent = `[${current}/${total}] Añadiendo: ${summary}`;
-    }
-
-    function finishSyncProgress(successCount, failCount) {
-      document.getElementById('syncProgressBar').style.width = '100%';
-      const iconContainer = document.getElementById('syncModalIcon');
-      
-      if (failCount === 0) {
-        document.getElementById('syncModalTitle').textContent = "¡Sincronización completada!";
-        document.getElementById('syncModalStatus').textContent = `Se han añadido con éxito ${successCount} eventos a tu Google Calendar con sus colores correspondientes.`;
-        iconContainer.innerHTML = `<span class="text-2xl">✅</span>`;
-      } else {
-        document.getElementById('syncModalTitle').textContent = "Sincronización finalizada con advertencias";
-        document.getElementById('syncModalStatus').textContent = `Eventos creados: ${successCount}. Fallos: ${failCount}.`;
-        iconContainer.innerHTML = `<span class="text-2xl">⚠️</span>`;
-      }
-
-      document.getElementById('syncModalActions').classList.remove('hidden');
-    }
-
-    function closeSyncProgressModal() {
-      document.getElementById('googleSyncProgressModal').classList.add('hidden');
-    }
-
-    async function executeGoogleCalendarSync() {
-      if (!googleAccessToken) {
-        showToast("No se dispone de token de acceso.", "warning");
-        return;
-      }
-
-      const entries = Object.entries(shiftData).filter(([dateStr]) => {
-        const [y, m] = dateStr.split('-').map(Number);
-        return y === currentYear && m === (currentMonth + 1);
-      });
-
-      if (entries.length === 0) return;
-
-      openSyncProgressModal(entries.length);
-
-      try {
-        // Resolve target calendar ID ('Turnos Lore')
-        document.getElementById('syncModalStatus').textContent = "Buscando/Creando calendario 'Turnos Lore'...";
-        const targetCalendarId = await getOrCreateTargetCalendar(googleAccessToken);
-
-        let successCount = 0;
-        let failCount = 0;
-
-        for (let i = 0; i < entries.length; i++) {
-          const [dateStr, type] = entries[i];
-          
-          // Calculate next day string for All-Day event DTEND
-          const dateObj = new Date(dateStr + 'T00:00:00');
-          dateObj.setDate(dateObj.getDate() + 1);
-          const nextYear = dateObj.getFullYear();
-          const nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const nextDay = String(dateObj.getDate()).padStart(2, '0');
-          const endDateStr = `${nextYear}-${nextMonth}-${nextDay}`;
-
-          const summary = (type === 'D') ? "Lore día" : "Lore noche";
-          const description = `Turno de trabajo asignado (${type === 'D' ? 'Día' : 'Noche'})`;
-          
-          // Google Calendar Color IDs: '5' = Banana (Yellow), '3' = Grape (Purple)
-          const colorId = (type === 'D') ? '5' : '3';
-
-          const eventBody = {
-            summary: summary,
-            description: description,
-            start: { date: dateStr },
-            end: { date: endDateStr },
-            colorId: colorId,
-            transparency: "transparent"
-          };
-
-          updateSyncProgress(i + 1, entries.length, summary);
-
-          try {
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${googleAccessToken}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(eventBody)
-            });
-
-            if (response.ok) {
-              successCount++;
-            } else {
-              const errorData = await response.json();
-              console.error("GCal API error:", errorData);
-              failCount++;
-            }
-          } catch (err) {
-            console.error("Network error during sync:", err);
-            failCount++;
-          }
-        }
-
-        finishSyncProgress(successCount, failCount);
-
-      } catch (err) {
-        console.error("Error con el calendario Turnos Lore:", err);
-        showToast("Error al obtener/crear el calendario 'Turnos Lore': " + err.message, "warning");
-        closeSyncProgressModal();
-      }
-    }
-
     // --- TOAST UTILITY ---
     function showToast(message, type = "info") {
       const container = document.getElementById('toastContainer');
+      if (!container) return;
       const toast = document.createElement('div');
 
       const bg = type === 'success' ? 'bg-emerald-600' : type === 'warning' ? 'bg-amber-600' : 'bg-slate-800';
