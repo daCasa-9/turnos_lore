@@ -819,8 +819,12 @@
         showToast("Buscando turnos en tu Google Calendar...", "info");
         const targetCalendarId = await getOrCreateTargetCalendar(accessToken);
         
-        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=2500`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` }
+        // Petición con no-cache para asegurar leer los datos más recientes de Google Calendar
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=2500&singleEvents=true`, {
+          headers: { 
+            'Authorization': `Bearer ${accessToken}`,
+            'Cache-Control': 'no-cache'
+          }
         });
 
         if (!res.ok) {
@@ -829,6 +833,14 @@
 
         const data = await res.json();
         const items = data.items || [];
+
+        // Limpieza de memoria local del mes actual para reflejar borrados o cambios en Google Calendar
+        const datesInCurrentMonth = Object.keys(shiftData).filter(d => {
+          const [y, m] = d.split('-').map(Number);
+          return y === currentYear && m === (currentMonth + 1);
+        });
+        datesInCurrentMonth.forEach(d => delete shiftData[d]);
+
         let loadedCount = 0;
 
         items.forEach(item => {
@@ -839,19 +851,21 @@
           if (startDate) {
             if (summaryLower.includes('lore día') || summaryLower.includes('lore dia')) {
               shiftData[startDate] = 'D';
-              loadedCount++;
+              const [y, m] = startDate.split('-').map(Number);
+              if (y === currentYear && m === (currentMonth + 1)) loadedCount++;
             } else if (summaryLower.includes('lore noche')) {
               shiftData[startDate] = 'N';
-              loadedCount++;
+              const [y, m] = startDate.split('-').map(Number);
+              if (y === currentYear && m === (currentMonth + 1)) loadedCount++;
             }
           }
         });
 
         renderCalendar();
         if (loadedCount > 0) {
-          showToast(`¡Éxito! Se han cargado ${loadedCount} turnos guardados desde el calendario "Turnos Lore".`, "success");
+          showToast(`¡Éxito! Se han cargado ${loadedCount} turnos de ${monthNames[currentMonth]} ${currentYear} desde Google Calendar.`, "success");
         } else {
-          showToast(`Conectado a Google Calendar. No se encontraron turnos previos guardados.`, "info");
+          showToast(`Sincronizado con Google Calendar. No se encontraron turnos para ${monthNames[currentMonth]} ${currentYear}.`, "info");
         }
       } catch (err) {
         console.error("Error al cargar eventos de Google Calendar:", err);
@@ -934,7 +948,7 @@
     function updateSyncProgress(current, total, summary) {
       const percentage = Math.round((current / total) * 100);
       document.getElementById('syncProgressBar').style.width = `${percentage}%`;
-      document.getElementById('syncModalStatus').textContent = `[${current}/${total}] Añadiendo: ${summary}`;
+      document.getElementById('syncModalStatus').textContent = `[${current}/${total}] ${summary}`;
     }
 
     function finishSyncProgress(successCount, failCount) {
@@ -943,11 +957,11 @@
       
       if (failCount === 0) {
         document.getElementById('syncModalTitle').textContent = "¡Sincronización completada!";
-        document.getElementById('syncModalStatus').textContent = `Se han añadido con éxito ${successCount} eventos al calendario "Turnos Lore" con sus colores correspondientes.`;
+        document.getElementById('syncModalStatus').textContent = `Calendario 'Turnos Lore' actualizado correctamente sin duplicados.`;
         iconContainer.innerHTML = `<span class="text-2xl">✅</span>`;
       } else {
         document.getElementById('syncModalTitle').textContent = "Sincronización finalizada con advertencias";
-        document.getElementById('syncModalStatus').textContent = `Eventos creados: ${successCount}. Fallos: ${failCount}.`;
+        document.getElementById('syncModalStatus').textContent = `Operaciones completadas: ${successCount}. Fallos: ${failCount}.`;
         iconContainer.innerHTML = `<span class="text-2xl">⚠️</span>`;
       }
 
@@ -964,77 +978,157 @@
         return;
       }
 
-      const entries = Object.entries(shiftData).filter(([dateStr]) => {
-        const [y, m] = dateStr.split('-').map(Number);
-        return y === currentYear && m === (currentMonth + 1);
-      });
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const allMonthDates = [];
+      for (let day = 1; day <= daysInMonth; day++) {
+        allMonthDates.push(formatDateKey(currentYear, currentMonth + 1, day));
+      }
 
-      if (entries.length === 0) return;
-
-      openSyncProgressModal(entries.length);
+      openSyncProgressModal(allMonthDates.length);
 
       try {
-        document.getElementById('syncModalStatus').textContent = "Buscando/Creando calendario 'Turnos Lore'...";
+        document.getElementById('syncModalStatus').textContent = "Conectando con el calendario 'Turnos Lore'...";
         const targetCalendarId = await getOrCreateTargetCalendar(googleAccessToken);
+
+        document.getElementById('syncModalStatus').textContent = "Comprobando eventos existentes en Google Calendar...";
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=2500&singleEvents=true`, {
+          headers: { 
+            'Authorization': `Bearer ${googleAccessToken}`,
+            'Cache-Control': 'no-cache'
+          }
+        });
+
+        if (!res.ok) throw new Error("No se pudieron consultar los eventos existentes.");
+        const data = await res.json();
+        const existingItems = data.items || [];
+
+        // Agrupar eventos existentes de "Lore" por fecha YYYY-MM-DD
+        const existingEventsByDate = {};
+        existingItems.forEach(item => {
+          if (!item.summary) return;
+          const summaryLower = item.summary.trim().toLowerCase();
+          if (summaryLower.includes('lore día') || summaryLower.includes('lore dia') || summaryLower.includes('lore noche')) {
+            const startDate = item.start?.date || item.start?.dateTime?.split('T')[0];
+            if (startDate) {
+              if (!existingEventsByDate[startDate]) existingEventsByDate[startDate] = [];
+              existingEventsByDate[startDate].push(item);
+            }
+          }
+        });
 
         let successCount = 0;
         let failCount = 0;
 
-        for (let i = 0; i < entries.length; i++) {
-          const [dateStr, type] = entries[i];
-          
-          const dateObj = new Date(dateStr + 'T00:00:00');
-          dateObj.setDate(dateObj.getDate() + 1);
-          const nextYear = dateObj.getFullYear();
-          const nextMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const nextDay = String(dateObj.getDate()).padStart(2, '0');
-          const endDateStr = `${nextYear}-${nextMonth}-${nextDay}`;
+        for (let i = 0; i < allMonthDates.length; i++) {
+          const dateStr = allMonthDates[i];
+          const appShift = shiftData[dateStr]; // 'D', 'N', o undefined
+          const existingList = existingEventsByDate[dateStr] || [];
 
-          const summary = (type === 'D') ? "Lore día" : "Lore noche";
-          const description = `Turno de trabajo asignado (${type === 'D' ? 'Día' : 'Noche'})`;
-          
-          // Google Calendar Color IDs: '5' = Banana (Yellow), '3' = Grape (Purple)
-          const colorId = (type === 'D') ? '5' : '3';
+          updateSyncProgress(i + 1, allMonthDates.length, `Procesando fecha ${dateStr}`);
 
-          const eventBody = {
-            summary: summary,
-            description: description,
-            start: { date: dateStr },
-            end: { date: endDateStr },
-            colorId: colorId,
-            transparency: "transparent"
-          };
+          if (appShift) {
+            const expectedSummary = (appShift === 'D') ? "Lore día" : "Lore noche";
+            const expectedColorId = (appShift === 'D') ? '5' : '3';
+            const description = `Turno de trabajo asignado (${appShift === 'D' ? 'Día' : 'Noche'})`;
 
-          updateSyncProgress(i + 1, entries.length, summary);
+            const dateObj = new Date(dateStr + 'T00:00:00');
+            dateObj.setDate(dateObj.getDate() + 1);
+            const nextY = dateObj.getFullYear();
+            const nextM = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const nextD = String(dateObj.getDate()).padStart(2, '0');
+            const endDateStr = `${nextY}-${nextM}-${nextD}`;
 
-          try {
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${googleAccessToken}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(eventBody)
-            });
+            if (existingList.length > 0) {
+              // Ya existe evento en esta fecha: actualizar el primero si cambia y eliminar duplicados extra
+              const primaryEvent = existingList[0];
+              const isSameSummary = primaryEvent.summary === expectedSummary;
+              const isSameColor = primaryEvent.colorId === expectedColorId;
 
-            if (response.ok) {
-              successCount++;
+              if (!isSameSummary || !isSameColor) {
+                try {
+                  const patchRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${encodeURIComponent(primaryEvent.id)}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Authorization': `Bearer ${googleAccessToken}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      summary: expectedSummary,
+                      description: description,
+                      colorId: expectedColorId,
+                      start: { date: dateStr },
+                      end: { date: endDateStr },
+                      transparency: "transparent"
+                    })
+                  });
+                  if (patchRes.ok) successCount++;
+                  else failCount++;
+                } catch (e) {
+                  failCount++;
+                }
+              } else {
+                successCount++;
+              }
+
+              // Si había más de 1 evento creado por error en el mismo día, eliminar los sobrantes
+              for (let k = 1; k < existingList.length; k++) {
+                try {
+                  await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${encodeURIComponent(existingList[k].id)}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+                  });
+                } catch (e) { console.error(e); }
+              }
+
             } else {
-              const errorData = await response.json();
-              console.error("GCal API error:", errorData);
-              failCount++;
+              // Crear nuevo evento si no existía ningún turno en esta fecha
+              try {
+                const createRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${googleAccessToken}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    summary: expectedSummary,
+                    description: description,
+                    start: { date: dateStr },
+                    end: { date: endDateStr },
+                    colorId: expectedColorId,
+                    transparency: "transparent"
+                  })
+                });
+                if (createRes.ok) successCount++;
+                else failCount++;
+              } catch (e) {
+                failCount++;
+              }
             }
-          } catch (err) {
-            console.error("Network error during sync:", err);
-            failCount++;
+
+          } else {
+            // El día en la app es libre. Si existía un turno previo en Google Calendar, eliminarlo.
+            if (existingList.length > 0) {
+              for (const ev of existingList) {
+                try {
+                  const delRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${encodeURIComponent(ev.id)}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+                  });
+                  if (delRes.ok) successCount++;
+                  else failCount++;
+                } catch (e) {
+                  failCount++;
+                }
+              }
+            }
           }
         }
 
         finishSyncProgress(successCount, failCount);
 
       } catch (err) {
-        console.error("Error con el calendario Turnos Lore:", err);
-        showToast("Error al obtener/crear el calendario 'Turnos Lore': " + err.message, "warning");
+        console.error("Error al sincronizar con Google Calendar:", err);
+        showToast("Error en sincronización: " + err.message, "warning");
         closeSyncProgressModal();
       }
     }
